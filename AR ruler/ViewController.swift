@@ -19,6 +19,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         // Set the view's delegate
         sceneView.delegate = self
         
+        sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints]
+        
         // Show statistics such as fps and timing information
         sceneView.showsStatistics = true
         
@@ -45,30 +47,52 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         // Pause the view's session
         sceneView.session.pause()
     }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+        if let touch = touches.first {
+            let touchLocation = touch.location(in: sceneView)
+            
+            let query: ARRaycastQuery? = sceneView.raycastQuery(from: touchLocation, allowing: .existingPlaneGeometry, alignment: .horizontal)
+                    guard let nonOptQuery = query else {
+                        print("query is nil")
+                        return
+                    }
+                    let results: [ARRaycastResult] = sceneView.session.raycast(nonOptQuery)
+            if let hitResult = results.first {
+                addDot(at: hitResult)
+        
+            }
+        
+        }
 
-    // MARK: - ARSCNViewDelegate
     
-/*
-    // Override to create and configure nodes for anchors added to the view's session.
-    func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        let node = SCNNode()
-     
-        return node
     }
-*/
     
-    func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
+    func addDot(at hitresult: ARRaycastResult) {
         
+         //creamos el cubo desde xcode
+            let sphere = SCNSphere(radius: 0.005)
+        
+                let material = SCNMaterial()
+        
+                // para entrar dentro de las propiedades del cubo, el material, son propiedades dentro de ARkit
+                material.diffuse.contents = UIColor.red
+        
+                // creamos un array por si le damos mas materiales al objeto, en este caso uno solo que es el color
+                sphere.materials = [material]
+        
+                // posicion del objeto
+                let node = SCNNode(geometry: sphere)
+        
+         
+                node.position = SCNVector3(hitresult.worldTransform.columns.3.x, hitresult.worldTransform.columns.3.y, hitresult.worldTransform.columns.3.z)
+        
+        
+                //el rootnode en la base y se le pueden ir agrendo hijos por si queres poner mas de  uno
+                sceneView.scene.rootNode.addChildNode(node)
+        
+                
     }
     
-    func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
-    }
-    
-    func sessionInterruptionEnded(_ session: ARSession) {
-        // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
-    }
 }
