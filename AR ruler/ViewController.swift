@@ -13,6 +13,10 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
     
+    // var para rastrar todos los puntos
+    var dotNodes = [SCNNode]()
+    var textNode = SCNNode()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -21,14 +25,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints]
         
-        // Show statistics such as fps and timing information
-        sceneView.showsStatistics = true
-        
-        // Create a new scene
-        let scene = SCNScene(named: "art.scnassets/ship.scn")!
-        
-        // Set the scene to the view
-        sceneView.scene = scene
+
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -50,20 +47,29 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         
-        if let touch = touches.first {
-            let touchLocation = touch.location(in: sceneView)
+        if dotNodes.count >= 2 {
             
-            let query: ARRaycastQuery? = sceneView.raycastQuery(from: touchLocation, allowing: .existingPlaneGeometry, alignment: .horizontal)
-                    guard let nonOptQuery = query else {
-                        print("query is nil")
-                        return
-                    }
-                    let results: [ARRaycastResult] = sceneView.session.raycast(nonOptQuery)
-            if let hitResult = results.first {
-                addDot(at: hitResult)
-        
+            for dot in dotNodes {
+                dot.removeFromParentNode()
+                
             }
+            
+            textNode.removeFromParentNode()
+            dotNodes = [SCNNode]()
+            
+        }
         
+        
+        if let touchLocation = touches.first?.location(in: sceneView) {
+         
+            if let query = sceneView.raycastQuery(from: touchLocation, allowing: .estimatedPlane, alignment: .any) {
+         
+                let hitTestResults = sceneView.session.raycast(query)
+         
+                if let hitResult = hitTestResults.first {
+                    addDot(at: hitResult)
+                }
+            }
         }
 
     
@@ -71,6 +77,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     
     func addDot(at hitresult: ARRaycastResult) {
         
+        
+
          //creamos el cubo desde xcode
             let sphere = SCNSphere(radius: 0.005)
         
@@ -92,7 +100,48 @@ class ViewController: UIViewController, ARSCNViewDelegate {
                 //el rootnode en la base y se le pueden ir agrendo hijos por si queres poner mas de  uno
                 sceneView.scene.rootNode.addChildNode(node)
         
+        
+        dotNodes.append(node)
+        
+        if dotNodes.count >= 2 {
+            calculate()
+        }
                 
     }
     
+    //func para calcular la distancia
+    func calculate () {
+        
+        let start = dotNodes[0]
+        let end = dotNodes[1]
+    
+        let a = end.position.x - start.position.x
+        let b = end.position.y - start.position.y
+        let c = end.position.z - start.position.z
+        
+        //formula para calcular la distancia en 3d
+        let distance = sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2))
+        
+        updateText(text: "\(abs(distance) * 100)cm", atPosition: end.position)
+    }
+    
+    // text geometry
+    func updateText(text: String, atPosition: SCNVector3) {
+        
+        
+        
+        
+        let textGeometry = SCNText(string: text, extrusionDepth: 1.0)
+        
+        textGeometry.firstMaterial?.diffuse.contents = UIColor.red
+        
+        textNode = SCNNode(geometry: textGeometry)
+        
+        textNode.position = SCNVector3(atPosition.x, atPosition.y + 0.01, atPosition.z)
+        
+        textNode.scale = SCNVector3(0.005, 0.005, 0.005)
+        
+        sceneView.scene.rootNode.addChildNode(textNode)
+        
+    }
 }
